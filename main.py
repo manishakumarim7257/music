@@ -2447,7 +2447,6 @@ async def stop_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error in stop_quiz: {e}", exc_info=True)
         await update.message.reply_text("❌ Error stopping quiz")
         
-
 async def send_next_group_poll(chat_id, context):
     """Send the next quiz question as a poll to the group"""
     try:
@@ -2490,7 +2489,22 @@ async def send_next_group_poll(chat_id, context):
         q = questions[game["current_q"]]
         q_text, options_json, correct_ans, pre_msg, explanation = q
         options = json.loads(options_json)
-        correct_idx = options.index(correct_ans)
+        
+        # 🟢 FIXED: correct_ans अब integer index है
+        try:
+            correct_idx = int(correct_ans)
+            # Validate index
+            if correct_idx < 0 or correct_idx >= len(options):
+                logging.warning(f"Invalid index {correct_idx} for {len(options)} options, using 0")
+                correct_idx = 0
+        except (ValueError, TypeError):
+            # अगर string है तो convert करो (backward compatibility)
+            try:
+                correct_idx = options.index(str(correct_ans))
+                logging.warning(f"Converted text '{correct_ans}' to index {correct_idx}")
+            except ValueError:
+                correct_idx = 0
+                logging.warning(f"Could not find '{correct_ans}', using 0")
         
         # Send pre-message if exists
         if pre_msg:
@@ -2522,7 +2536,7 @@ async def send_next_group_poll(chat_id, context):
                     question=f"[{game['current_q'] + 1}/{len(questions)}] {q_text}",
                     options=options, 
                     type="quiz", 
-                    correct_option_id=correct_idx,
+                    correct_option_id=correct_idx,  # 🟢 अब सही index है
                     explanation=clean_explanation, 
                     is_anonymous=False,
                     open_period=raw_timer
@@ -2551,7 +2565,7 @@ async def send_next_group_poll(chat_id, context):
         game["poll_map"][poll_msg.poll.id] = {
             "correct_idx": correct_idx, 
             "chat_id": chat_id,
-            "correct_answer": correct_ans,
+            "correct_answer": options[correct_idx],  # 🟢 Store correct option text
             "question_index": game["current_q"]
         }
         
@@ -2614,7 +2628,6 @@ async def send_next_group_poll(chat_id, context):
             
     except Exception as e:
         logging.error(f"Error in send_next_group_poll: {e}", exc_info=True)
-        
         
 async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
