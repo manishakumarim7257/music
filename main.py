@@ -204,52 +204,46 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
  EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
     
 # AI Question Generator helper
+# Line 207 के पास - generate_bulk_questions_ai function को update करें
+
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
     if not ai_client:
+        logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning mock questions")
+        logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return mock_questions(topic, count, options_cnt)
     
-    # ✅ बेहतर prompt लिखो
-    prompt = f"""Generate exactly {count} unique and interesting multiple-choice quiz questions about "{topic}".
+    # ✅ बेहतर prompt
+    prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 
-Requirements:
-- Language: {lang}
-- Difficulty Level: {difficulty}
-- Options per question: {options_cnt}
-- Each question MUST have a unique correct answer
+Topic: {topic}
+Language: {lang}
+Difficulty: {difficulty}
+Options per question: {options_cnt}
 
-Return ONLY a valid JSON array with this exact structure:
+Return ONLY valid JSON array (no markdown, no extra text):
 [
-  {{
-    "question": "What is...?",
-    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-    "correct": 0
-  }}
+  {{"question": "What is..?", "options": ["A", "B", "C"], "correct": 0}}
 ]
 
-IMPORTANT RULES:
-1. "correct" field is the 0-based INDEX (0, 1, 2, or 3)
-2. All options must be different
-3. Questions must be educational and relevant to {topic}
-4. No dummy questions like "Sample question"
-
-Now generate the questions:"""
+Rules:
+1. "correct" must be 0-based index
+2. All options must be DIFFERENT
+3. Questions must relate to {topic}
+4. NO sample/dummy questions
+5. Return ONLY JSON"""
 
     try:
+        logging.info(f"🤖 Requesting AI for {count} questions on {topic}...")
         response = ai_client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
         )
         
+        logging.info(f"📝 Response received: {response.text[:100]}...")
         clean_text = response.text.strip()
         
-        # Clean markdown formatting
-        if clean_text.startswith("```json"):
-            clean_text = clean_text[7:]
-        if clean_text.startswith("```"):
-            clean_text = clean_text[3:]
-        if clean_text.endswith("```"):
-            clean_text = clean_text[:-3]
-        clean_text = clean_text.strip()
+        # Clean markdown
+        clean_text = clean_text.replace("```json", "").replace("```", "").strip()
         
         questions = json.loads(clean_text)
         
@@ -257,35 +251,40 @@ Now generate the questions:"""
         valid_questions = []
         for q in questions:
             try:
-                # Ensure fields exist
                 if not q.get("question") or not q.get("options"):
+                    logging.warning(f"Skipping invalid question: {q}")
                     continue
                 
-                # Ensure correct index is valid
                 correct_idx = q.get("correct", 0)
-                if not isinstance(correct_idx, int):
-                    correct_idx = 0
-                
-                if correct_idx >= len(q["options"]) or correct_idx < 0:
+                if not isinstance(correct_idx, int) or correct_idx < 0 or correct_idx >= len(q["options"]):
                     correct_idx = 0
                 
                 q["correct"] = correct_idx
                 valid_questions.append(q)
-            except:
+                logging.info(f"✅ Valid Q{len(valid_questions)}: {q['question'][:50]}...")
+            except Exception as q_err:
+                logging.warning(f"Question parse error: {q_err}")
                 continue
         
-        # अगर कम से कम 1 सवाल मिल गया, तो बाकी mock से fill करो
         if len(valid_questions) < count:
-            logging.warning(f"AI generated {len(valid_questions)} questions, filling rest with mock")
-            mock_qs = mock_questions(topic, count - len(valid_questions), options_cnt)
+            missing = count - len(valid_questions)
+            logging.warning(f"⚠️ Only {len(valid_questions)} questions received, filling {missing} with mock")
+            mock_qs = mock_questions(topic, missing, options_cnt)
             valid_questions.extend(mock_qs)
         
-        return valid_questions[:count]  # ✅ सिर्फ required count return करो
+        logging.info(f"✅ Generated {len(valid_questions)} total questions")
+        return valid_questions[:count]
         
-    except Exception as e:
-        logging.error(f"AI Generation Failed: {e}")
-        logging.error(f"Response text: {response.text if 'response' in locals() else 'No response'}")
+    except json.JSONDecodeError as je:
+        logging.error(f"❌ JSON Parse Error: {je}")
+        logging.error(f"Response was: {clean_text[:200]}")
         return mock_questions(topic, count, options_cnt)
+    except Exception as e:
+        logging.error(f"❌ AI Generation Error: {e}", exc_info=True)
+        if 'response' in locals():
+            logging.error(f"Response text: {response.text[:200]}")
+        return mock_questions(topic, count, options_cnt)
+
 
 def mock_questions(topic, count, options_cnt):
     questions = []
