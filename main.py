@@ -321,7 +321,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['topic'] = update.message.text
-    reply_keyboard = [['5', '10', '20']]
+    reply_keyboard = [['10', 20', '50', '70']]
     await update.message.reply_text(
         f"✅ Topic Saved: *{context.user_data['topic']}*\n\n"
         "🔢 **Step 2:** How many questions do you want?",
@@ -345,13 +345,13 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.message.reply_text(
         "✅ Title Saved!\n\n"
         "📝 **Step 4:** Send a Description for this quiz.\n"
-        "(Or type `/skipauto` to leave it blank)"
+        "(Or type `/skip` to leave it blank)"
     )
     return DESCRIPTION
 
 async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text
-    context.user_data['description'] = "None" if text == "/skipauto" else text
+    context.user_data['description'] = "None" if text == "/skip" else text
     reply_keyboard = [['English', 'Hindi', 'Hinglish']]
     await update.message.reply_text(
         "🌐 **Step 5 — Language**\nChoose quiz output layout language:",
