@@ -536,12 +536,11 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         # Get quiz data from context (either manual /newquiz OR AI /autoquiz)
         quiz_build = context.user_data.get("quiz_build")
         if not quiz_build:
-            # For /autoquiz, check if we have AI-generated questions in context
             quiz_build = {
                 "title": context.user_data.get("title", "AI Quiz"),
                 "description": context.user_data.get("description", "AI Generated Quiz"),
                 "timer": context.user_data.get("time_limit", 30),
-                "questions": context.user_data.get("ai_questions", [])  # 👈 AI questions
+                "questions": context.user_data.get("ai_questions", [])
             }
         
         user_id = context.user_data.get("quiz_build_creator_id") or update.callback_query.from_user.id
@@ -568,13 +567,30 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
             if isinstance(q, dict):
                 q_text = q.get("text") or q.get("question", "")
                 options = q.get("options", [])
-                correct = q.get("correct", "")
+                correct = q.get("correct", 0)
                 explanation = q.get("explanation", "")
                 pre_message = q.get("pre_message", "")
                 
+                # 🟢 FIXED: Convert correct to integer index
+                if isinstance(correct, str):
+                    try:
+                        correct_idx = options.index(correct)
+                    except (ValueError, IndexError):
+                        correct_idx = 0
+                        logging.warning(f"Could not find '{correct}' in options, using 0")
+                else:
+                    try:
+                        correct_idx = int(correct)
+                    except (ValueError, TypeError):
+                        correct_idx = 0
+                
+                # Ensure valid index
+                if correct_idx < 0 or correct_idx >= len(options):
+                    correct_idx = 0
+                
                 cursor.execute(
                     "INSERT INTO questions (quiz_id, question_text, options, correct_answer, explanation, pre_message) VALUES (?, ?, ?, ?, ?, ?)", 
-                    (quiz_id, q_text, json.dumps(options), correct, explanation, pre_message)
+                    (quiz_id, q_text, json.dumps(options), correct_idx, explanation, pre_message)
                 )
         
         conn.commit()
@@ -583,7 +599,6 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         # ✅ CLEAR TEMPORARY DATA
         context.user_data.pop("quiz_build", None)
         context.user_data.pop("quiz_build_creator_id", None)
-        # Clear /autoquiz specific keys
         context.user_data.pop("title", None)
         context.user_data.pop("description", None)
         context.user_data.pop("time_limit", None)
