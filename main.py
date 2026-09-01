@@ -3988,13 +3988,16 @@ async def main():
         return
     
     try:
-        init_db()  
+        init_db()
+        migrate_fix_correct_answer()  # 🟢 ADD THIS LINE
         
         request_config = HTTPXRequest(
             connect_timeout=35.0,
             read_timeout=45.0,
             write_timeout=35.0
         )
+        
+        # ... rest of the code ...
         
         app = (
             Application.builder()
