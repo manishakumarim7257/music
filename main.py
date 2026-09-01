@@ -103,7 +103,7 @@ def init_db():
                 quiz_id INTEGER,
                 question_text TEXT,
                 options TEXT,
-                correct_answer TEXT,
+                correct_answer INTEGER DEFAULT 0,
                 explanation TEXT,
                 pre_message TEXT,
                 FOREIGN KEY(quiz_id) REFERENCES quizzes(quiz_id)
@@ -118,7 +118,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 quiz_id INTEGER NOT NULL,
                 interval_minutes INTEGER NOT NULL,
-                schedule_time TEXT,      -- stores 'HH:MM' or NULL
+                schedule_time TEXT,
                 next_run TEXT,
                 active INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT (datetime('now'))
@@ -137,28 +137,62 @@ def init_db():
             except Exception as ae:
                 logging.warning(f"Could not add schedule_time column: {ae}")
 
-        # Table to store Quiz Configurations
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS quizzes (
-                quiz_id TEXT PRIMARY KEY,
-                creator_id INTEGER,
-                title TEXT,
-                topic TEXT,
-                q_count INTEGER,
-                language TEXT,
-                difficulty TEXT,
-                options_count INTEGER,
-                time_limit INTEGER,
-                shuffle TEXT,
-                negative REAL,
-                questions_json TEXT
-            )
-        """)
-
         conn.close()
-        logging.info("Database initialized successfully with negative_value column")
+        logging.info("Database initialized successfully with correct_answer as INTEGER")
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
+
+
+def migrate_fix_correct_answer():
+    """🟢 Fix existing questions: convert correct_answer text to index"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Get all questions with text-based correct_answer
+        cursor.execute("SELECT id, options, correct_answer FROM questions")
+        rows = cursor.fetchall()
+        
+        fixed_count = 0
+        for q_id, options_json, correct_ans in rows:
+            try:
+                options = json.loads(options_json)
+                
+                # अगर correct_ans पहले से ही number है, तो skip करो
+                try:
+                    idx = int(correct_ans)
+                    if 0 <= idx < len(options):
+                        continue
+                except (ValueError, TypeError):
+                    pass
+                
+                # Text को index में convert करो
+                try:
+                    correct_idx = options.index(str(correct_ans))
+                except ValueError:
+                    # अगर exact match नहीं मिला, तो fuzzy search करो
+                    correct_idx = next(
+                        (i for i, opt in enumerate(options) 
+                         if opt.strip().lower() == str(correct_ans).strip().lower()), 
+                        0
+                    )
+                    logging.warning(f"Q{q_id}: Fuzzy matched '{correct_ans}' to index {correct_idx}")
+                
+                # Database को update करो
+                cursor.execute("UPDATE questions SET correct_answer = ? WHERE id = ?", 
+                             (correct_idx, q_id))
+                fixed_count += 1
+                
+            except Exception as e:
+                logging.error(f"Error fixing Q{q_id}: {e}")
+        
+        conn.commit()
+        conn.close()
+        if fixed_count > 0:
+            logging.info(f"✅ Migration complete: Fixed {fixed_count} questions")
+        
+    except Exception as e:
+        logging.error(f"❌ Migration failed: {e}")
         
 def check_active_quiz_creation(user_id, context):
     """Check if user has an active quiz creation in progress"""
