@@ -996,9 +996,13 @@ async def receive_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             return QUESTIONS
 
         opts = [o.text for o in poll.options]
+        # 🟢 FIXED: Store correct_option_id (integer index) instead of text
         q_data = {
-            "text": poll.question, "options": opts, "correct": opts[poll.correct_option_id],
-            "explanation": poll.explanation if poll.explanation else "", "pre_message": ""
+            "text": poll.question, 
+            "options": opts, 
+            "correct": poll.correct_option_id,  # 🟢 INDEX, not text
+            "explanation": poll.explanation if poll.explanation else "", 
+            "pre_message": ""
         }
         context.user_data["quiz_build"]["questions"].append(q_data)
         context.user_data["current_question_index"] = len(context.user_data["quiz_build"]["questions"]) - 1
@@ -1011,7 +1015,6 @@ async def receive_poll(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             "💬 Optional:\n"
             "➤ ➕ Now Send the next question directly (auto-skips pre-message)\n"
             "➤ ⚠️ Quiz Finish karne ke liye Pre-message set kare!"
-            
         )
         return PRE_MESSAGE
     except Exception as e:
