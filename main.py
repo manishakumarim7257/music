@@ -4053,7 +4053,10 @@ async def main():
                 TOPIC: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_topic)],
                 Q_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_q_count)],
                 TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title)],
-                DESCRIPTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description)],
+                DESCRIPTION: [
+                        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description),
+                        CommandHandler("skip", handle_description)
+                    ],
                 LANGUAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_language)],
                 EXPLANATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_explanation)],
                 DIFFICULTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_difficulty)],
