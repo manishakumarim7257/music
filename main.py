@@ -239,14 +239,13 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
 # AI Question Generator helper
 # Line 207 के पास - generate_bulk_questions_ai function को update करें
-
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
     if not ai_client:
         logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning mock questions")
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return mock_questions(topic, count, options_cnt)
     
-    # ✅ बेहतर prompt
+    # ✅ FIXED: Randomized correct answer positions
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 
 Topic: {topic}
@@ -256,15 +255,20 @@ Options per question: {options_cnt}
 
 Return ONLY valid JSON array (no markdown, no extra text):
 [
-  {{"question": "What is..?", "options": ["A", "B", "C"], "correct": 0}}
+  {{"question": "What is..?", "options": ["A", "B", "C", "D"], "correct": 2}}
 ]
 
-Rules:
-1. "correct" must be 0-based index
-2. All options must be DIFFERENT
-3. Questions must relate to {topic}
-4. NO sample/dummy questions
-5. Return ONLY JSON"""
+CRITICAL RULES:
+1. "correct" MUST be a 0-based index (0, 1, 2, 3, etc)
+2. "correct" values should be RANDOMLY placed - use different positions for EACH question
+3. Do NOT put correct answer always at position 0 or position 1
+4. For {options_cnt} options: "correct" can be ANY value from 0 to {options_cnt-1}
+5. Each question must have correct answer at DIFFERENT random position
+6. Example: Q1 correct=1, Q2 correct=3, Q3 correct=0, Q4 correct=2 (varied!)
+7. All options must be DIFFERENT and meaningful
+8. Questions must relate to {topic}
+9. NO sample/dummy questions
+10. Return ONLY JSON array"""
 
     try:
         logging.info(f"🤖 Requesting AI for {count} questions on {topic}...")
@@ -283,19 +287,32 @@ Rules:
         
         # ✅ Validation
         valid_questions = []
-        for q in questions:
+        for idx, q in enumerate(questions):
             try:
                 if not q.get("question") or not q.get("options"):
                     logging.warning(f"Skipping invalid question: {q}")
                     continue
                 
                 correct_idx = q.get("correct", 0)
-                if not isinstance(correct_idx, int) or correct_idx < 0 or correct_idx >= len(q["options"]):
+                
+                # 🟢 CRITICAL: Ensure correct is INTEGER and valid
+                if not isinstance(correct_idx, int):
+                    try:
+                        correct_idx = int(correct_idx)
+                    except (ValueError, TypeError):
+                        correct_idx = 0
+                
+                # Validate index range
+                if correct_idx < 0 or correct_idx >= len(q["options"]):
+                    logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                     correct_idx = 0
                 
                 q["correct"] = correct_idx
                 valid_questions.append(q)
-                logging.info(f"✅ Valid Q{len(valid_questions)}: {q['question'][:50]}...")
+                
+                # 🟢 LOG: Track correct answer position
+                logging.info(f"✅ Q{len(valid_questions)}: '{q['question'][:40]}...' | Correct at index {correct_idx}")
+                
             except Exception as q_err:
                 logging.warning(f"Question parse error: {q_err}")
                 continue
@@ -318,7 +335,6 @@ Rules:
         if 'response' in locals():
             logging.error(f"Response text: {response.text[:200]}")
         return mock_questions(topic, count, options_cnt)
-
 
 def mock_questions(topic, count, options_cnt):
     questions = []
