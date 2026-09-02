@@ -2516,18 +2516,25 @@ async def send_next_group_poll(chat_id, context):
         q_text, options_json, correct_ans, pre_msg, explanation = q
         options = json.loads(options_json)
         
-        # 🟢 FIXED: correct_ans अब integer index है
+        # 🟢 FIXED: Convert correct_ans to INTEGER INDEX
         try:
             correct_idx = int(correct_ans)
-            # Validate index
+            
+            # Validate index range
             if correct_idx < 0 or correct_idx >= len(options):
-                logging.warning(f"Invalid index {correct_idx} for {len(options)} options, using 0")
+                logging.warning(f"Q{game['current_q']}: Invalid index {correct_idx} for {len(options)} options")
                 correct_idx = 0
+            
+            # 🟢 Log करो
+            correct_option_text = options[correct_idx]
+            logging.info(f"🎯 Q{game['current_q']}: correct_idx={correct_idx}, option='{correct_option_text}'")
+            
         except (ValueError, TypeError):
-            # अगर string है तो convert करो (backward compatibility)
+            # Backward compatibility: अगर string है
+            logging.warning(f"Q{game['current_q']}: correct_ans is string: {correct_ans}")
             try:
                 correct_idx = options.index(str(correct_ans))
-                logging.warning(f"Converted text '{correct_ans}' to index {correct_idx}")
+                logging.info(f"Converted '{correct_ans}' to index {correct_idx}")
             except ValueError:
                 correct_idx = 0
                 logging.warning(f"Could not find '{correct_ans}', using 0")
@@ -2562,7 +2569,7 @@ async def send_next_group_poll(chat_id, context):
                     question=f"[{game['current_q'] + 1}/{len(questions)}] {q_text}",
                     options=options, 
                     type="quiz", 
-                    correct_option_id=correct_idx,  # 🟢 अब सही index है
+                    correct_option_id=correct_idx,  # 🟢 सही INDEX
                     explanation=clean_explanation, 
                     is_anonymous=False,
                     open_period=raw_timer
@@ -2594,6 +2601,8 @@ async def send_next_group_poll(chat_id, context):
             "correct_answer": options[correct_idx],  # 🟢 Store correct option text
             "question_index": game["current_q"]
         }
+        
+        logging.info(f"📤 Poll sent for Q{game['current_q']}: correct at index {correct_idx}")
         
         # Wait for timer
         try:
