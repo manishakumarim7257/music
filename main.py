@@ -541,14 +541,14 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 # Final Summary aur Quiz Generation Confirmation
 async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle negative marking selection and save AI-generated quiz to DB, then show summary panel"""
+    """Handle negative marking selection and save AI-generated quiz to DB"""
     try:
         query = update.callback_query
         await query.answer()
         
         neg_val = float(query.data.replace("neg_", "").strip())
         
-        # Get quiz data from context (either manual /newquiz OR AI /autoquiz)
+        # Get quiz data from context
         quiz_build = context.user_data.get("quiz_build")
         if not quiz_build:
             quiz_build = {
@@ -568,17 +568,16 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
-        # Insert into quizzes table with negative_value
+        # Insert into quizzes table
         cursor.execute(
             "INSERT INTO quizzes (creator_id, title, description, timer, negative_value) VALUES (?, ?, ?, ?, ?)", 
             (user_id, quiz_build["title"], quiz_build["description"], quiz_build.get("timer", 30), neg_val)
         )
         quiz_id = cursor.lastrowid
         
-        # Insert AI-generated questions (or manual questions from /newquiz)
+        # Insert questions
         questions = quiz_build.get("questions", [])
-        for q in questions:
-            # Handle both formats: manual polls and AI-generated
+        for q_idx, q in enumerate(questions):
             if isinstance(q, dict):
                 q_text = q.get("text") or q.get("question", "")
                 options = q.get("options", [])
@@ -586,22 +585,31 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
                 explanation = q.get("explanation", "")
                 pre_message = q.get("pre_message", "")
                 
-                # 🟢 FIXED: Convert correct to integer index
+                # 🟢 CRITICAL: Convert correct to INTEGER INDEX
                 if isinstance(correct, str):
                     try:
-                        correct_idx = options.index(correct)
-                    except (ValueError, IndexError):
-                        correct_idx = 0
-                        logging.warning(f"Could not find '{correct}' in options, using 0")
+                        correct_idx = int(correct)
+                    except ValueError:
+                        # अगर string option है, तो find करो
+                        try:
+                            correct_idx = options.index(str(correct))
+                            logging.info(f"Q{q_idx}: Converted string '{correct}' to index {correct_idx}")
+                        except (ValueError, IndexError):
+                            correct_idx = 0
+                            logging.warning(f"Q{q_idx}: Could not find '{correct}', using 0")
                 else:
                     try:
                         correct_idx = int(correct)
                     except (ValueError, TypeError):
                         correct_idx = 0
                 
-                # Ensure valid index
+                # Validate index
                 if correct_idx < 0 or correct_idx >= len(options):
+                    logging.warning(f"Q{q_idx}: Invalid index {correct_idx}, using 0")
                     correct_idx = 0
+                
+                # 🟢 Log करो database में क्या जा रहा है
+                logging.info(f"Q{q_idx}: Saving correct_answer={correct_idx}, option='{options[correct_idx]}'")
                 
                 cursor.execute(
                     "INSERT INTO questions (quiz_id, question_text, options, correct_answer, explanation, pre_message) VALUES (?, ?, ?, ?, ?, ?)", 
@@ -626,7 +634,7 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         context.user_data.pop("shuffle", None)
         context.user_data.pop("explanation", None)
         
-        # Remove callback buttons from the negative marking message
+        # Remove callback buttons
         try:
             await query.edit_message_reply_markup(reply_markup=None)
         except Exception:
@@ -638,7 +646,7 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
             f"✅ Quiz Created Successfully!\n⏱ Timer: {quiz_build.get('timer', 30)}s\n📉 Negative Marking: {neg_display}"
         )
         
-        # ✅ SHOW SUMMARY PANEL (same as /newquiz flow)
+        # ✅ SHOW SUMMARY PANEL
         await show_summary_panel_text(query, context, quiz_id)
         
         return ConversationHandler.END
