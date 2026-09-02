@@ -348,7 +348,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await update.message.reply_text(
         "🤖 **AI Auto-Quiz Configuration Wizard**\n\n"
         "📝 **Step 1:** Send me the Topic or Subject for the quiz.\n"
-        "(Example: Ancient History, Python Coding, Geography...)",
+        "(Example: Ancient History, Morden History, Hindi, Geography...)",
         parse_mode="Markdown"
     )
     return TOPIC
