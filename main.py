@@ -334,15 +334,6 @@ def mock_questions(topic, count, options_cnt):
     return questions
 
 # --- BOT ROUTINES & HANDLERS ---
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "🤖 **Welcome to AI Auto-Quiz Generator Bot!**\n\n"
-        "⚡ Commands Layout:\n"
-        "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.",
-        parse_mode="Markdown"
-    )
-
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text(
@@ -784,6 +775,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 *Check Available Commands:*\n"
             "➤ /help *– Open help center*\n\n"
             "👥 *Add the bot to a group and start quizzes*\n"
+            "🤖 **Welcome to AI Auto-Quiz Generator Bot!**\n\n"
+            "⚡ Commands Layout:\n"
+            "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
             f"📢 *Owner Details:* ID `{OWNER_ID}`"
         )
         
