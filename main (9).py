@@ -334,31 +334,22 @@ def mock_questions(topic, count, options_cnt):
     return questions
 
 # --- BOT ROUTINES & HANDLERS ---
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "🤖 **Welcome to AI Auto-Quiz Generator Bot!**\n\n"
-        "⚡ Commands Layout:\n"
-        "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.",
-        parse_mode="Markdown"
-    )
-
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text(
-        "🤖 **AI Auto-Quiz Configuration Wizard**\n\n"
-        "📝 **Step 1:** Send me the Topic or Subject for the quiz.\n"
-        "(Example: Ancient History, Python Coding, Geography...)",
+        "🤖 *AI Auto-Quiz Configuration Wizard*\n\n"
+        "📝 *Step 1:* Send me the Topic or Subject for the quiz.\n"
+        "(Example: Ancient History, Modern History, Hindi, Geography...)",
         parse_mode="Markdown"
     )
     return TOPIC
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['topic'] = update.message.text
-    reply_keyboard = [['10', 20', '50', '70']]
+    reply_keyboard = [['10', '20', '50', '70']]
     await update.message.reply_text(
         f"✅ Topic Saved: *{context.user_data['topic']}*\n\n"
-        "🔢 **Step 2:** How many questions do you want?",
+        "🔢 *Step 2:* How many questions do you want?",
         parse_mode="Markdown",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
@@ -368,7 +359,7 @@ async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data['q_count'] = int(update.message.text)
     await update.message.reply_text(
         f"✅ Questions Count: *{context.user_data['q_count']}*\n\n"
-        "📝 **Step 3:** Send me the Title of your quiz.",
+        "📝 *Step 3:* Send me the Title of your quiz.",
         parse_mode="Markdown",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -378,7 +369,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data['title'] = update.message.text
     await update.message.reply_text(
         "✅ Title Saved!\n\n"
-        "📝 **Step 4:** Send a Description for this quiz.\n"
+        "📝 *Step 4:* Send a Description for this quiz.\n"
         "(Or type `/skip` to leave it blank)"
     )
     return DESCRIPTION
@@ -388,7 +379,7 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data['description'] = "None" if text == "/skip" else text
     reply_keyboard = [['English', 'Hindi', 'Hinglish']]
     await update.message.reply_text(
-        "🌐 **Step 5 — Language**\nChoose quiz output layout language:",
+        "🌐 *Step 5 — Language*\nChoose quiz output layout language:",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return LANGUAGE
@@ -397,7 +388,7 @@ async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     context.user_data['language'] = update.message.text
     reply_keyboard = [['With Explanation', 'No Explanation']]
     await update.message.reply_text(
-        "🧾 **Step 6 — Explanation**\nDo you want explanations?",
+        "🧾 *Step 6 — Explanation*\nDo you want explanations?",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return EXPLANATION
@@ -406,7 +397,7 @@ async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data['explanation'] = update.message.text
     reply_keyboard = [['Easy', 'Medium', 'Hard']]
     await update.message.reply_text(
-        "🎚 **Step 7 — Difficulty**\nChoose calculation difficulty:",
+        "🎚 *Step 7 — Difficulty*\nChoose calculation difficulty:",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return DIFFICULTY
@@ -415,7 +406,7 @@ async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data['difficulty'] = update.message.text
     reply_keyboard = [['2 Options', '4 Options']]
     await update.message.reply_text(
-        "🛛 **Step 8 — Option Count**\nHow many choices per card?",
+        "🛛 *Step 8 — Option Count*\nHow many choices per card?",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return OPTIONS_COUNT
@@ -424,7 +415,7 @@ async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data['options_count'] = int(update.message.text.split()[0])
     reply_keyboard = [['15 sec', '30 sec', '60 sec']]
     await update.message.reply_text(
-        "⏱ **Step 9 — Time Limit**\nSet ticker duration:",
+        "⏱ *Step 9 — Time Limit*\nSet ticker duration:",
         reply_markup=ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True)
     )
     return TIME_LIMIT
@@ -512,7 +503,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ])
         
         await update.message.reply_text(
-            "🛑 **Select Negative Marking Schema:**\n\n"
+            "🛑 *Select Negative Marking Schema:*\n\n"
             "Aap is quiz ke liye kitni negative marking set karna chahte hain?",
             reply_markup=neg_keyboard,
             parse_mode="Markdown"
@@ -784,6 +775,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 *Check Available Commands:*\n"
             "➤ /help *– Open help center*\n\n"
             "👥 *Add the bot to a group and start quizzes*\n"
+            "🤖 **Welcome to AI Auto-Quiz Generator Bot!**\n\n"
+            "⚡ Commands Layout:\n"
+            "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
             f"📢 *Owner Details:* ID `{OWNER_ID}`"
         )
         
