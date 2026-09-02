@@ -355,7 +355,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data['topic'] = update.message.text
-    reply_keyboard = [['10', 20', '50', '70']]
+    reply_keyboard = [['10', 20', '50']]
     await update.message.reply_text(
         f"✅ Topic Saved: *{context.user_data['topic']}*\n\n"
         "🔢 **Step 2:** How many questions do you want?",
